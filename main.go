@@ -78,7 +78,7 @@ func commandMap(config *Config) error {
 	} else {
 		urlToCall = "https://pokeapi.co/api/v2/location-area/" // Default URL
 	}
-
+	//check cache first
 	res, err := http.Get(urlToCall)
 	if err != nil {
 		log.Fatal(err)
@@ -108,6 +108,7 @@ func commandMapb(config *Config) error {
 	if config.Previous == nil || *config.Previous == "" {
 		return errors.New("no previous page")
 	}
+	//check cache first
 	res, err := http.Get(*config.Previous)
 	if err != nil {
 		log.Fatal(err)
