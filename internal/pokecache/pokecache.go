@@ -21,12 +21,14 @@ func NewCache(interval time.Duration) *Cache {
 		entries: make(map[string]cacheEntry),
 	}
 
-	cache.reapLoop(interval)
+	go cache.reapLoop(interval)
 
 	return cache
 }
 
-// adds a new entry to the cache
+// Adds a new entry to the cache
+// key: url to API call
+// val: value of the API call
 func (c *Cache) Add(key string, val []byte) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
@@ -39,7 +41,7 @@ func (c *Cache) Add(key string, val []byte) {
 }
 
 // .Get() gets an entry from the cache.
-// It should take a key (a string) and return a []byte and a bool. The bool should be true if the entry was found and false if it wasn't.
+// false no entry, true entry exists
 func (c *Cache) Get(key string) ([]byte, bool) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()

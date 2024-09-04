@@ -6,9 +6,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"os"
+	"time"
+
+	"github.com/Chrisk1905/pokedexcli/internal/pokecache"
 )
 
 type cliCommand struct {
@@ -20,6 +22,7 @@ type cliCommand struct {
 type Config struct {
 	Next     *string // Pointer to handle absence of a next URL
 	Previous *string // Pointer to handle absence of a previous URL
+	Cache    *pokecache.Cache
 }
 
 func getCommands() map[string]cliCommand {
@@ -71,36 +74,53 @@ func commandExit(config *Config) error {
 }
 
 func commandMap(config *Config) error {
+	//get URL
 	var urlToCall string
-
 	if config.Next != nil {
 		urlToCall = *config.Next // Use the next URL if available
 	} else {
 		urlToCall = "https://pokeapi.co/api/v2/location-area/" // Default URL
 	}
 	//check cache first
+	val, ok := config.Cache.Get(urlToCall)
+	locationArea := locationAreas{}
+	if ok {
+		fmt.Println("found in cache")
+		err := json.Unmarshal(val, &locationArea)
+		if err != nil {
+			return err
+		}
+		for _, area := range locationArea.Results {
+			fmt.Println(area.Name)
+		}
+		config.Next = &locationArea.Next
+		config.Previous = &locationArea.Previous
+		return nil
+	}
+	//http get call
 	res, err := http.Get(urlToCall)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	body, err := io.ReadAll(res.Body)
 	res.Body.Close()
 	if res.StatusCode > 299 {
-		log.Fatalf("Response failed with status code: %d and\nbody: %s\n", res.StatusCode, body)
+		return fmt.Errorf("response failed with status code: %d and\nbody: %s", res.StatusCode, body)
 	}
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
-	locationArea := locationAreas{}
 	err = json.Unmarshal(body, &locationArea)
 	if err != nil {
-		fmt.Println(err)
+		return err
 	}
 	for _, area := range locationArea.Results {
 		fmt.Println(area.Name)
 	}
 	config.Next = &locationArea.Next
 	config.Previous = &locationArea.Previous
+	//add result to cache
+	config.Cache.Add(urlToCall, body)
 	return nil
 }
 
@@ -109,40 +129,64 @@ func commandMapb(config *Config) error {
 		return errors.New("no previous page")
 	}
 	//check cache first
+	val, ok := config.Cache.Get(*config.Previous)
+	locationArea := locationAreas{}
+	if ok {
+		fmt.Println("found in cache")
+		err := json.Unmarshal(val, &locationArea)
+		if err != nil {
+			return err
+		}
+		for _, area := range locationArea.Results {
+			fmt.Println(area.Name)
+		}
+		config.Next = &locationArea.Next
+		config.Previous = &locationArea.Previous
+		return nil
+	}
 	res, err := http.Get(*config.Previous)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	body, err := io.ReadAll(res.Body)
 	res.Body.Close()
 	if res.StatusCode > 299 {
-		log.Fatalf("Response failed with status code: %d and\nbody: %s\n", res.StatusCode, body)
+		return fmt.Errorf("response failed with status code: %d and\nbody: %s", res.StatusCode, body)
 	}
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
-	locationArea := locationAreas{}
 	err = json.Unmarshal(body, &locationArea)
 	if err != nil {
-		fmt.Println(err)
+		return err
 	}
 	for _, area := range locationArea.Results {
 		fmt.Println(area.Name)
 	}
 	config.Next = &locationArea.Next
 	config.Previous = &locationArea.Previous
+	//add to cache
+	config.Cache.Add(*config.Previous, body)
 	return nil
 }
 
 func main() {
 	scanner := bufio.NewScanner(os.Stdin)
 	commands := getCommands()
-	// Initialize Config
-	config := &Config{ // using an address to make a pointer
-		Next:     nil, // No next URL at the start
-		Previous: nil, // No previous URL at the start
+	fmt.Println("creating cleanInterval..")
+	cleanInterval, err := time.ParseDuration("1m")
+	if err != nil {
+		fmt.Printf("error creating time.ParseDuration %v", err)
 	}
-
+	fmt.Println("initializing cache..")
+	cache := pokecache.NewCache(cleanInterval)
+	fmt.Println("intializing config..")
+	config := &Config{
+		Next:     nil,
+		Previous: nil,
+		Cache:    cache,
+	}
+	fmt.Println("starting REPL..")
 	for {
 		fmt.Print("pokedex > ")
 		if scanner.Scan() {
