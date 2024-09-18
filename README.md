@@ -4,7 +4,7 @@
 Go Pokedex is a command-line application written in Go that interacts with the PokéAPI to fetch and display detailed information on various Pokémon species. The project involved parsing JSON data, executing HTTP requests, performance enhancing caching techniques, and constructing a user-friendly REPL.
 
 ## Features
-- Retrieve detailed information on all available Pokémon.
+- Retrieve detailed and clean information on all available Pokémon.
 - Fast searches with optimized caching for improved performance.
 - User-friendly command-line interface (CLI).
 
@@ -33,7 +33,5 @@ Run the application:
 - help: Displays a help message 
 - exit: Exit the Pokedex
 
-
 ## Contributing
-This is a personal project, feel free to fork and add your own features as you please. 
-
+This is a personal project, feel free to fork and add your own features as you please!
