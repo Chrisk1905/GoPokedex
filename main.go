@@ -60,6 +60,16 @@ func getCommands() map[string]cliCommand {
 			description: "Try to catch a specified Pokemon",
 			callback:    commandCatch,
 		},
+		"inspect": {
+			name:        "inspect",
+			description: "Get information on a Pokemon",
+			callback:    commandInspect,
+		},
+		"pokedex": {
+			name:        "pokedex",
+			description: "print a list of all pokemon in pokedex",
+			callback:    commandPokedex,
+		},
 	}
 }
 
@@ -571,7 +581,7 @@ func commandCatch(config *Config, args []string) error {
 		return fmt.Errorf("no pokemon given")
 	}
 	var pokemonArg string = args[0]
-	urlToCall := fmt.Sprintf("https://pokeapi.co/api/v2/pokemon/%s", pokemonArg)
+	urlToCall := fmt.Sprintf("https://pokeapi.co/api/v2/pokemon/%s", strings.ToLower(pokemonArg))
 	//check cache
 	val, ok := config.Cache.Get(urlToCall)
 	pokemon := Pokemon{}
@@ -624,6 +634,41 @@ func commandCatch(config *Config, args []string) error {
 	} else {
 		fmt.Printf("%s escaped! \n", pokemon.Name)
 	}
+	return nil
+}
+
+func commandInspect(config *Config, args []string) error {
+	if len(args) == 0 {
+		return fmt.Errorf("no pokemon given")
+	}
+	pokemonName := strings.ToLower(args[0])
+	pokedex := *config.Pokedex
+	pokemon, ok := pokedex[pokemonName]
+
+	if ok {
+		//print pokemon
+		fmt.Printf("Name: %s \n", pokemonName)
+		fmt.Printf("Height: %v \n", pokemon.Height)
+		fmt.Printf("Weight: %v \n", pokemon.Weight)
+		fmt.Print("Stats: \n")
+		for _, stat := range pokemon.Stats {
+			fmt.Printf(" . -%s: %v \n", stat.Stat.Name, stat.BaseStat)
+		}
+		fmt.Print("Types: \n")
+		for _, t := range pokemon.Types {
+			fmt.Printf(" . - %s \n", t.Type.Name)
+		}
+		return nil
+	}
+	fmt.Println("You have not caught that Pokemon")
+	return nil
+}
+
+func commandPokedex(config *Config, args []string) error {
+	for name := range *config.Pokedex {
+		fmt.Printf(" . -%s\n", name)
+	}
+
 	return nil
 }
 
